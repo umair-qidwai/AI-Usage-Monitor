@@ -1,0 +1,31 @@
+# Authenticated sessions and private runtime data
+browser-data/
+state.json
+traffic.ndjson
+*.ndjson
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+# Local environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+# Never publish operational backups
+backups/
+backup/
+*.bak
+*.bak.*
+*.bak-*
+*.backup-*
+*.backup
+*.backup.*
+*.old
+*~
+.DS_Store

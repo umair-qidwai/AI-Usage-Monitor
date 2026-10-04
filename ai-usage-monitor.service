@@ -1,0 +1,17 @@
+[Unit]
+Description=AI subscription usage monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/ai-usage-monitor
+EnvironmentFile=-%h/ai-usage-monitor/.env
+ExecStart=%h/ai-usage-monitor/run-xvfb.sh
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target
