@@ -113,7 +113,8 @@ def provider_response_error(provider, status, url):
 def provider_updates(provider, url, body):
     """Parse only provider response shapes observed in traffic discovery."""
     out = {}
-    if provider == "codex" and url.rstrip("/").endswith("/backend-api/wham/usage"):
+    path = urlsplit(url).path.rstrip("/")
+    if provider == "codex" and path.endswith("/backend-api/wham/usage"):
         windows = (body.get("rate_limit") or {})
         for key, window in (("primary_window", windows.get("primary_window")),
                             ("secondary_window", windows.get("secondary_window"))):
@@ -127,7 +128,7 @@ def provider_updates(provider, url, body):
             out[prefix + "_used"] = used
             out[prefix + "_remaining"] = max(0.0, 100.0 - used)
             out[prefix + "_reset"] = iso_timestamp(window.get("reset_at"))
-    elif provider == "claude" and "/api/organizations/" in url and url.rstrip("/").endswith("/usage"):
+    elif provider == "claude" and "/api/organizations/" in path and path.endswith("/usage"):
         for source, prefix in (("five_hour", "five_hour"), ("seven_day", "weekly")):
             window = body.get(source) or {}
             if not isinstance(window, dict) or window.get("utilization") is None:

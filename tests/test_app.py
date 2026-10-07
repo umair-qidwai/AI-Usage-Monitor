@@ -32,6 +32,13 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(result["five_hour_remaining"], 88.0)
         self.assertTrue(result["weekly_reset"].endswith("+00:00"))
 
+    def test_codex_usage_response_with_query_is_parsed(self):
+        body = {"rate_limit": {"primary_window": {"limit_window_seconds": 18000, "used_percent": 8},
+                               "secondary_window": {"limit_window_seconds": 604800, "used_percent": 17}}}
+        result = self.app.provider_updates("codex", "https://chatgpt.com/backend-api/wham/usage?cache=1", body)
+        self.assertEqual(result["five_hour_used"], 8.0)
+        self.assertEqual(result["weekly_used"], 17.0)
+
     def test_claude_null_windows_and_zero_usage(self):
         result = self.app.provider_updates("claude", "https://claude.ai/api/organizations/example/usage",
                                            {"five_hour": {"utilization": 0}, "seven_day": None})
