@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "browser-data"
 STATE_FILE = ROOT / "state.json"
 LOG_FILE = ROOT / "traffic.ndjson"
+TRAFFIC_LOG_MAX_BYTES = max(0, int(os.getenv("TRAFFIC_LOG_MAX_BYTES", str(10 * 1024 * 1024))))
 DATA.mkdir(exist_ok=True)
 
 CODEX_URL = os.getenv("CODEX_USAGE_URL", "https://chatgpt.com/codex/settings/usage")
@@ -102,6 +103,13 @@ def iso_timestamp(value):
     return str(value)
 
 
+def provider_response_error(provider, status, url):
+    """Classify an access denial on a provider's official usage page."""
+    if provider == "codex" and status in {401, 403} and "/codex/settings/usage" in url:
+        return "needs_login"
+    return None
+
+
 def provider_updates(provider, url, body):
     """Parse only provider response shapes observed in traffic discovery."""
     out = {}
@@ -132,6 +140,9 @@ def provider_updates(provider, url, body):
 
 
 def append_traffic(record):
+    if TRAFFIC_LOG_MAX_BYTES and LOG_FILE.exists() and LOG_FILE.stat().st_size >= TRAFFIC_LOG_MAX_BYTES:
+        rotated = LOG_FILE.with_suffix(LOG_FILE.suffix + ".1")
+        LOG_FILE.replace(rotated)
     with LOG_FILE.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=True) + "\n")
 
@@ -216,6 +227,10 @@ async def attach_page(page: Page, provider: str):
             return
         record = {"ts": utc_now(), "provider": provider, "kind": "response", "url": safe_url(response.url),
                   "status": response.status, "content_type": response.headers.get("content-type", "")}
+        access_error = provider_response_error(provider, response.status, response.url)
+        if access_error:
+            health[provider] = access_error
+            health["last_error"] = f"{provider}: HTTP {response.status} on usage page"
         try:
             if "json" in record["content_type"]:
                 body = await response.json()

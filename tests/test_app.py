@@ -41,6 +41,12 @@ class ParserTests(unittest.TestCase):
     def test_unrelated_response_is_ignored(self):
         self.assertEqual(self.app.provider_updates("codex", "https://chatgpt.com/other", {}), {})
 
+    def test_codex_access_denied_is_reported_as_needs_login(self):
+        self.assertEqual(
+            self.app.provider_response_error("codex", 403, "https://chatgpt.com/codex/settings/usage"),
+            "needs_login",
+        )
+
     def test_safe_url_removes_queries_and_challenges(self):
         self.assertEqual(self.app.safe_url("https://example.com/usage?session=example#fragment"), "https://example.com/usage")
         self.assertEqual(self.app.safe_url("https://example.com/cdn-cgi/example"), "https://example.com/<redacted-challenge>")
@@ -49,6 +55,15 @@ class ParserTests(unittest.TestCase):
         state = self.app.initial_state()
         state["codex"]["weekly_used"] = 12
         self.assertIsNone(state["claude"]["weekly_used"])
+
+    def test_traffic_log_rotates_when_limit_is_reached(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.app.LOG_FILE = Path(directory) / "traffic.ndjson"
+            self.app.LOG_FILE.write_text("old-record\n")
+            self.app.TRAFFIC_LOG_MAX_BYTES = 1
+            self.app.append_traffic({"provider": "codex"})
+            self.assertEqual(self.app.LOG_FILE.with_suffix(".ndjson.1").read_text(), "old-record\n")
+            self.assertEqual(self.app.LOG_FILE.read_text(), '{"provider": "codex"}\n')
 
 
 class StateTests(unittest.IsolatedAsyncioTestCase):
